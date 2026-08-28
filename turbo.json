@@ -1,6 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "MONGODB_URI",
+    "MONGODB_DB",
+    "GDRIVE_AUTH_MODE",
+    "GDRIVE_ROOT_FOLDER_ID",
+    "GDRIVE_SHARED_DRIVE_ID",
+    "GOOGLE_OAUTH_CLIENT_ID",
+    "GOOGLE_OAUTH_CLIENT_SECRET",
+    "GOOGLE_OAUTH_REFRESH_TOKEN",
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "GOOGLE_CREDENTIALS_JSON"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

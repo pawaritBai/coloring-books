@@ -13,11 +13,14 @@
   },
   "dependencies": {
     "@workspace/ui": "*",
+    "googleapis": "^144.0.0",
     "lucide-react": "^1.34.0",
+    "mongodb": "^6.12.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

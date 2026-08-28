@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx eslint *)",
+      "Bash(node -e \"console.log\\(process.allowedNodeEnvironmentFlags.has\\('--experimental-strip-types'\\)\\)\")",
+      "Bash(npx turbo *)",
+      "Bash(command -v mongod mongosh docker)",
+      "Read(//opt/homebrew/**)",
+      "Bash(brew list *)",
+      "Bash(curl -s -o /dev/null -w \"home %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -w \"\\\\n[%{http_code}]\\\\n\" http://localhost:3000/api/books)",
+      "Bash(curl -s -w \"\\\\n[%{http_code}]\\\\n\" http://localhost:3000/api/categories)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(echo \"exit: $?  \\(1 = none found, good\\)\")",
+      "Bash(node --check scripts/seed.mjs)",
+      "Bash(node --check scripts/get-drive-refresh-token.mjs)"
+    ]
+  }
+}

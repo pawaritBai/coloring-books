@@ -123,7 +123,16 @@
   * {
     @apply border-border outline-ring/50;
     }
+  html {
+    /* Base type scale — bump this to grow every rem-based size app-wide. */
+    font-size: 17px;
+    }
   body {
     @apply bg-background text-foreground;
+    }
+  @media (min-width: 1280px) {
+    html {
+      font-size: 18px;
+      }
     }
 }

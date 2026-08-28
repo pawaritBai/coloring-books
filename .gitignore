@@ -28,6 +28,11 @@ dist
 .DS_Store
 *.pem
 
+# secrets
+credentials.json
+*.credentials.json
+service-account*.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*
