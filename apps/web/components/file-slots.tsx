@@ -1,7 +1,8 @@
 "use client"
 
-import { useId } from "react"
+import { useId, useState } from "react"
 import { FileText, ImageIcon, Upload, X } from "lucide-react"
+import { toast } from "sonner"
 import {
   FOLDER_LABELS,
   SECTION_LABELS,
@@ -12,6 +13,7 @@ import {
   type SectionType,
 } from "@/lib/types"
 import type { UploadEntry } from "@/lib/api-client"
+import { cn } from "@workspace/ui/lib/utils"
 
 export type SlotKey = `${SectionType}:${FolderType}`
 
@@ -53,6 +55,15 @@ function fileToPending(file: File): PendingFile {
   }
 }
 
+const ACCEPT_EXT = /\.(png|jpe?g|gif|webp|avif|svg|bmp|tiff?|heic|pdf)$/i
+function isAccepted(file: File): boolean {
+  return (
+    file.type.startsWith("image/") ||
+    file.type === "application/pdf" ||
+    (file.type === "" && ACCEPT_EXT.test(file.name))
+  )
+}
+
 export function pendingToEntries(pending: PendingFiles): UploadEntry[] {
   const out: UploadEntry[] = []
   for (const section of SECTIONS) {
@@ -73,14 +84,50 @@ function Slot({
 }: {
   slot: SlotKey
   files: PendingFile[]
-  onAdd: (files: FileList) => void
+  onAdd: (files: File[]) => void
   onRemove: (id: string) => void
 }) {
   const inputId = useId()
+  const [dragging, setDragging] = useState(false)
   const [section, folder] = slot.split(":") as [SectionType, FolderType]
 
+  function accept(dropped: File[]) {
+    const ok = dropped.filter(isAccepted)
+    if (ok.length) onAdd(ok)
+    const skipped = dropped.length - ok.length
+    if (skipped > 0) {
+      toast.info(
+        `${skipped} file${skipped === 1 ? "" : "s"} skipped — only images and PDFs are allowed.`,
+      )
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-lg border bg-card p-3 transition-colors",
+        dragging ? "border-primary ring-2 ring-primary/20" : "border-border",
+      )}
+      onDragEnter={(e) => {
+        e.preventDefault()
+        setDragging(true)
+      }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "copy"
+        if (!dragging) setDragging(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setDragging(false)
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragging(false)
+        if (e.dataTransfer.files.length) accept(Array.from(e.dataTransfer.files))
+      }}
+    >
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">
           {SECTION_LABELS[section]}{" "}
@@ -93,10 +140,17 @@ function Slot({
 
       <label
         htmlFor={inputId}
-        className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-border py-4 text-center text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        className={cn(
+          "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed py-5 text-center text-xs transition-colors",
+          dragging
+            ? "border-primary bg-primary/5 text-foreground"
+            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+        )}
       >
         <Upload className="size-4" />
-        <span>Add images or PDF</span>
+        <span>
+          {dragging ? "Drop to add" : "Drag files here, or click to browse"}
+        </span>
         <input
           id={inputId}
           type="file"
@@ -104,7 +158,7 @@ function Slot({
           accept="image/*,application/pdf"
           className="sr-only"
           onChange={(e) => {
-            if (e.target.files?.length) onAdd(e.target.files)
+            if (e.target.files?.length) accept(Array.from(e.target.files))
             e.target.value = ""
           }}
         />
@@ -156,8 +210,9 @@ export function FileSlots({
   onChange: (next: PendingFiles) => void
   hint?: string
 }) {
-  function addTo(slot: SlotKey, list: FileList) {
-    const added = Array.from(list).map(fileToPending)
+  function addTo(slot: SlotKey, files: File[]) {
+    if (files.length === 0) return
+    const added = files.map(fileToPending)
     onChange({ ...value, [slot]: [...value[slot], ...added] })
   }
   function removeFrom(slot: SlotKey, id: string) {
@@ -167,7 +222,12 @@ export function FileSlots({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div
+      className="flex flex-col gap-4"
+      // a drop that misses a slot shouldn't make the browser open the file
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
+    >
       {SECTIONS.map((section) => (
         <div key={section} className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
@@ -184,7 +244,7 @@ export function FileSlots({
                   key={slot}
                   slot={slot}
                   files={value[slot]}
-                  onAdd={(list) => addTo(slot, list)}
+                  onAdd={(files) => addTo(slot, files)}
                   onRemove={(id) => removeFrom(slot, id)}
                 />
               )

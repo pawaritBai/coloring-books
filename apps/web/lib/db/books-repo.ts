@@ -17,7 +17,7 @@ function statusFromCounts(c: Record<string, number>): {
   return { finished, extra: n === 2 ? "green" : n === 1 ? "yellow" : "red" }
 }
 
-export async function recomputeBook(bookId: string): Promise<void> {
+export async function recomputeBook(bookId: string): Promise<BookDoc | null> {
   const fileCol = await files()
   const rows = await fileCol
     .aggregate<{ _id: { s: string; f: string }; n: number }>([
@@ -36,7 +36,7 @@ export async function recomputeBook(bookId: string): Promise<void> {
   const fileCount = rows.reduce((sum, r) => sum + r.n, 0)
 
   const col = await books()
-  await col.updateOne(
+  return col.findOneAndUpdate(
     { bookId },
     {
       $set: {
@@ -46,6 +46,7 @@ export async function recomputeBook(bookId: string): Promise<void> {
         updatedAt: new Date(),
       },
     },
+    { returnDocument: "after" },
   )
 }
 
@@ -94,8 +95,9 @@ export interface CreateBookInput {
 
 export async function createBookDoc(
   input: CreateBookInput,
+  opts?: { bookId?: string; drive?: BookDoc["drive"] },
 ): Promise<BookDoc> {
-  const bookId = await nextBookId()
+  const bookId = opts?.bookId ?? (await nextBookId())
   const now = new Date()
   const doc: BookDoc = {
     bookId,
@@ -104,7 +106,7 @@ export async function createBookDoc(
     categories: input.categories,
     pageLength: input.pageLength,
     storagePrefix: bookRoot(bookId),
-    drive: { rootFolderId: "", folders: {} },
+    drive: opts?.drive ?? { rootFolderId: "", folders: {} },
     slotCounts: {},
     fileCount: 0,
     status: { finished: false, extra: null },

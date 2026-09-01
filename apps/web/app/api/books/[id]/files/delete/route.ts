@@ -40,9 +40,7 @@ export function POST(request: Request, { params }: Ctx) {
     }
 
     await deleteDriveFiles(removed.map((f) => f.drive.fileId))
-    await recomputeBook(id)
-
-    const fresh = await getBookDoc(id)
+    const fresh = await recomputeBook(id)
     return Response.json({
       book: serializeBook(fresh ?? doc, await filesForBook(id)),
       deleted: removed.length,

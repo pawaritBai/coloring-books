@@ -28,10 +28,8 @@ export function POST(request: Request, { params }: Ctx) {
       return badRequest("No files to upload.")
     }
 
-    await ingestFiles(id, mp.files)
-    await recomputeBook(id)
-
-    const fresh = await getBookDoc(id)
+    await ingestFiles(doc, mp.files)
+    const fresh = await recomputeBook(id)
     return Response.json({
       book: serializeBook(fresh ?? doc, await filesForBook(id)),
     })

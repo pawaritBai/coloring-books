@@ -5,7 +5,7 @@ import {
   getDrive,
   listScope,
 } from "@/lib/drive/auth"
-import { FOLDERS, SECTIONS, type FolderType, type SectionType } from "@/lib/types"
+import type { FolderType, SectionType } from "@/lib/types"
 import { slotKey, STORAGE_ROOT } from "@/lib/prefix-key"
 
 const FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -14,20 +14,9 @@ function esc(value: string): string {
   return value.replace(/'/g, "\\'")
 }
 
-/** Find a child folder by name, or create it. Idempotent. */
-async function ensureFolder(name: string, parentId: string): Promise<string> {
-  const drive = getDrive()
-  const found = await drive.files.list({
-    q: `name='${esc(name)}' and '${esc(parentId)}' in parents and mimeType='${FOLDER_MIME}' and trashed=false`,
-    fields: "files(id)",
-    pageSize: 1,
-    ...allDriveParams(),
-    ...listScope(),
-  })
-  const hit = found.data.files?.[0]?.id
-  if (hit) return hit
-
-  const created = await drive.files.create({
+/** Create a folder unconditionally (one Drive round-trip). */
+async function createFolder(name: string, parentId: string): Promise<string> {
+  const created = await getDrive().files.create({
     requestBody: { name, mimeType: FOLDER_MIME, parents: [parentId] },
     fields: "id",
     ...allDriveParams(),
@@ -37,6 +26,36 @@ async function ensureFolder(name: string, parentId: string): Promise<string> {
   return id
 }
 
+/** Find a child folder by name, or create it. Idempotent (two round-trips). */
+async function ensureFolder(name: string, parentId: string): Promise<string> {
+  const found = await getDrive().files.list({
+    q: `name='${esc(name)}' and '${esc(parentId)}' in parents and mimeType='${FOLDER_MIME}' and trashed=false`,
+    fields: "files(id)",
+    pageSize: 1,
+    ...allDriveParams(),
+    ...listScope(),
+  })
+  const hit = found.data.files?.[0]?.id
+  return hit ?? createFolder(name, parentId)
+}
+
+// The `books/` root never changes — resolve it once per server process.
+const globalForDrive = globalThis as unknown as {
+  __driveStorageRoot?: Promise<string>
+}
+function storageRootFolderId(): Promise<string> {
+  if (!globalForDrive.__driveStorageRoot) {
+    globalForDrive.__driveStorageRoot = ensureFolder(
+      STORAGE_ROOT,
+      driveRootParent(),
+    ).catch((err) => {
+      globalForDrive.__driveStorageRoot = undefined
+      throw err
+    })
+  }
+  return globalForDrive.__driveStorageRoot
+}
+
 export interface BookFolders {
   /** the per-book folder */
   rootFolderId: string
@@ -44,22 +63,52 @@ export interface BookFolders {
   folders: Record<string, string>
 }
 
-/** Create (or reuse) books/<bookId>/<section>/<folder> folders on Drive. */
-export async function ensureBookFolders(bookId: string): Promise<BookFolders> {
-  const storageRoot = await ensureFolder(STORAGE_ROOT, driveRootParent())
-  const bookFolderId = await ensureFolder(bookId, storageRoot)
+/**
+ * Create (or reuse) books/<bookId>/<section>/<folder> folders on Drive.
+ *
+ * Sibling folders are created in parallel. When the book folder is brand new
+ * (no `existingRootFolderId`) its subfolders can't exist yet, so we skip the
+ * "does it exist?" lookups and just create — cutting ~15 sequential round-trips
+ * down to ~4.
+ */
+export async function ensureBookFolders(
+  bookId: string,
+  existingRootFolderId?: string,
+): Promise<BookFolders> {
+  const storageRoot = await storageRootFolderId()
 
-  const folders: Record<string, string> = {}
-  for (const section of SECTIONS) {
-    const sectionFolderId = await ensureFolder(section, bookFolderId)
-    for (const folder of FOLDERS) {
-      folders[slotKey(section, folder)] = await ensureFolder(
-        folder,
-        sectionFolderId,
-      )
-    }
+  const fresh = !existingRootFolderId
+  // A fresh book folder can't exist yet (its name is a unique counter id and a
+  // failed ingest deletes the whole book), so skip the "does it exist?" lookup.
+  const bookFolderId =
+    existingRootFolderId ??
+    (fresh
+      ? await createFolder(bookId, storageRoot)
+      : await ensureFolder(bookId, storageRoot))
+  const mk = fresh ? createFolder : ensureFolder
+
+  const [coverId, interiorId] = await Promise.all([
+    mk("cover", bookFolderId),
+    mk("interior", bookFolderId),
+  ])
+
+  const [coverFinal, coverExtra, interiorFinal, interiorExtra] =
+    await Promise.all([
+      mk("final", coverId),
+      mk("extra", coverId),
+      mk("final", interiorId),
+      mk("extra", interiorId),
+    ])
+
+  return {
+    rootFolderId: bookFolderId,
+    folders: {
+      [slotKey("cover", "final")]: coverFinal,
+      [slotKey("cover", "extra")]: coverExtra,
+      [slotKey("interior", "final")]: interiorFinal,
+      [slotKey("interior", "extra")]: interiorExtra,
+    },
   }
-  return { rootFolderId: bookFolderId, folders }
 }
 
 export interface UploadResult {

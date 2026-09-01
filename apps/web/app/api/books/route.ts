@@ -3,20 +3,19 @@ import { parseBookMultipart } from "@/lib/api/multipart"
 import { parseBookInput } from "@/lib/api/validation"
 import { serializeBook } from "@/lib/api/serialize"
 import { ingestFiles } from "@/lib/api/ingest"
-import { ensureIndexes } from "@/lib/db/collections"
+import { ensureIndexes, nextBookId } from "@/lib/db/collections"
 import {
   createBookDoc,
   deleteBookDoc,
-  getBookDoc,
   listBooks,
   recomputeBook,
 } from "@/lib/db/books-repo"
-import { filesForBook } from "@/lib/db/files-repo"
 import { ensureCategories } from "@/lib/db/categories-repo"
 import { files as filesCol } from "@/lib/db/collections"
 import type { FileDoc } from "@/lib/db/collections"
 import type { StatusFilter } from "@/lib/types"
 import { requireSession } from "@/lib/auth/require"
+import { deleteDriveFile, ensureBookFolders } from "@/lib/drive/drive-service"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -54,32 +53,51 @@ export function POST(request: Request) {
   return handle(async () => {
     await requireSession()
     await ensureIndexes()
-    const mp = await parseBookMultipart(request)
+
+    // Reserve the id up front so the Drive folder tree can be built in parallel
+    // with reading the (potentially large) multipart body.
+    const bookId = await nextBookId()
+    const [mp, drive] = await Promise.all([
+      parseBookMultipart(request),
+      ensureBookFolders(bookId),
+    ])
+
+    const cleanupFolders = () =>
+      deleteDriveFile(drive.rootFolderId).catch(() => {})
 
     const parsed = parseBookInput(mp.fields)
-    if (!parsed.ok) return badRequest(parsed.error)
-
+    if (!parsed.ok) {
+      await cleanupFolders()
+      return badRequest(parsed.error)
+    }
     if (mp.badSlots.length > 0) {
+      await cleanupFolders()
       return badRequest(`Unknown upload slot: ${mp.badSlots.join(", ")}`)
     }
     if (mp.files.length === 0) {
+      await cleanupFolders()
       return badRequest("Upload at least one file into any slot.")
     }
 
     const categories = await ensureCategories(parsed.value.categories)
-    const book = await createBookDoc({ ...parsed.value, categories })
+    const book = await createBookDoc(
+      { ...parsed.value, categories },
+      { bookId, drive },
+    )
 
+    let bookFiles
     try {
-      await ingestFiles(book.bookId, mp.files)
+      bookFiles = await ingestFiles(book, mp.files)
     } catch (err) {
-      // creation failed mid-upload — remove the empty book so we don't leave junk
-      await deleteBookDoc(book.bookId).catch(() => {})
+      // failed mid-upload — remove the book + its Drive folder so nothing lingers
+      await Promise.all([
+        deleteBookDoc(book.bookId).catch(() => {}),
+        cleanupFolders(),
+      ])
       throw err
     }
 
-    await recomputeBook(book.bookId)
-    const fresh = await getBookDoc(book.bookId)
-    const bookFiles = await filesForBook(book.bookId)
+    const fresh = await recomputeBook(book.bookId)
     return Response.json(
       { book: serializeBook(fresh ?? book, bookFiles) },
       { status: 201 },
