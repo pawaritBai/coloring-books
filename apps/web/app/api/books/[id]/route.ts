@@ -10,6 +10,7 @@ import {
 import { deleteAllForBook, filesForBook } from "@/lib/db/files-repo"
 import { ensureCategories } from "@/lib/db/categories-repo"
 import { deleteDriveFile, deleteDriveFiles } from "@/lib/drive/drive-service"
+import { requireSession } from "@/lib/auth/require"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -18,6 +19,7 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export function GET(_request: Request, { params }: Ctx) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const { id } = await params
     const doc = await getBookDoc(id)
@@ -28,6 +30,7 @@ export function GET(_request: Request, { params }: Ctx) {
 
 export function PATCH(request: Request, { params }: Ctx) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const { id } = await params
     const body = await request.json().catch(() => null)
@@ -43,6 +46,7 @@ export function PATCH(request: Request, { params }: Ctx) {
 
 export function DELETE(_request: Request, { params }: Ctx) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const { id } = await params
     const doc = await getBookDoc(id)

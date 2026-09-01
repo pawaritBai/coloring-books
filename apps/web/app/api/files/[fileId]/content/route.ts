@@ -2,6 +2,7 @@ import { Readable } from "node:stream"
 import { handle, notFound } from "@/lib/api/responses"
 import { findFileById } from "@/lib/db/files-repo"
 import { getDriveFileStream } from "@/lib/drive/content"
+import { requireSession } from "@/lib/auth/require"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -10,6 +11,7 @@ type Ctx = { params: Promise<{ fileId: string }> }
 
 export function GET(_request: Request, { params }: Ctx) {
   return handle(async () => {
+    await requireSession()
     const { fileId } = await params
     const doc = await findFileById(fileId)
     if (!doc) return notFound("File not found")

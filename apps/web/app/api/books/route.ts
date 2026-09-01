@@ -16,12 +16,14 @@ import { ensureCategories } from "@/lib/db/categories-repo"
 import { files as filesCol } from "@/lib/db/collections"
 import type { FileDoc } from "@/lib/db/collections"
 import type { StatusFilter } from "@/lib/types"
+import { requireSession } from "@/lib/auth/require"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export function GET(request: Request) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const url = new URL(request.url)
     const bookDocs = await listBooks({
@@ -50,6 +52,7 @@ export function GET(request: Request) {
 
 export function POST(request: Request) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const mp = await parseBookMultipart(request)
 

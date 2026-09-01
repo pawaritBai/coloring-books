@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/files-repo"
 import { deleteDriveFiles } from "@/lib/drive/drive-service"
 import type { FileDoc } from "@/lib/db/collections"
+import { requireSession } from "@/lib/auth/require"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -19,6 +20,7 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export function POST(request: Request, { params }: Ctx) {
   return handle(async () => {
+    await requireSession()
     await ensureIndexes()
     const { id } = await params
     const doc = await getBookDoc(id)

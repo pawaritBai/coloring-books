@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { usePathname } from "next/navigation"
 import type { Book, BookInput, FolderType, SectionType } from "@/lib/types"
 import {
   apiAddFiles,
@@ -48,6 +49,7 @@ interface BookStore {
 const BookStoreContext = createContext<BookStore | null>(null)
 
 export function BookStoreProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname()
   const [books, setBooks] = useState<Book[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,10 +80,15 @@ export function BookStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // No data to load on the login page (the API would 401 anyway).
+    if (pathname === "/login") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false)
+      return
+    }
     // Initial data load from the API on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshAll()
-  }, [refreshAll])
+  }, [pathname, refreshAll])
 
   const getBook = useCallback(
     (id: string) => books.find((b) => b.id === id),

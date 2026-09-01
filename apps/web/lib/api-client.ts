@@ -8,6 +8,16 @@ export interface UploadEntry {
 
 async function unwrap<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    // Session expired mid-session — bounce to login.
+    if (
+      res.status === 401 &&
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login"
+    ) {
+      window.location.assign(
+        `/login?next=${encodeURIComponent(window.location.pathname)}`,
+      )
+    }
     let message = `Request failed (${res.status})`
     try {
       const body = (await res.json()) as { error?: string }

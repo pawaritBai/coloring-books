@@ -13,7 +13,11 @@
       "Bash(curl -s http://localhost:3000/)",
       "Bash(echo \"exit: $?  \\(1 = none found, good\\)\")",
       "Bash(node --check scripts/seed.mjs)",
-      "Bash(node --check scripts/get-drive-refresh-token.mjs)"
+      "Bash(node --check scripts/get-drive-refresh-token.mjs)",
+      "Bash(echo \"EXIT $?\")",
+      "Bash(node -e \"console.log\\('jose', require.resolve\\('jose'\\)\\); console.log\\('bcryptjs', require.resolve\\('bcryptjs'\\)\\)\")",
+      "Bash(node -e \"const b=require\\('bcryptjs'\\); b.hash\\('test',10\\).then\\(h=>console.log\\('hash ok', h.slice\\(0,7\\)\\)\\)\")",
+      "Bash(node -e \"try{require.resolve\\('server-only'\\);console.log\\('server-only FOUND'\\)}catch{console.log\\('server-only missing'\\)}\")"
     ]
   }
 }
