@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { BookStoreProvider } from "@/components/book-store-provider"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/components/auth-provider"
 import { Toaster } from "@/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
 
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <BookStoreProvider>{children}</BookStoreProvider>
+          <AuthProvider>
+            <BookStoreProvider>{children}</BookStoreProvider>
+          </AuthProvider>
           <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>

@@ -2,8 +2,10 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalEnv": [
+    "NODE_ENV",
     "MONGODB_URI",
     "MONGODB_DB",
+    "AUTH_SECRET",
     "GDRIVE_AUTH_MODE",
     "GDRIVE_ROOT_FOLDER_ID",
     "GDRIVE_SHARED_DRIVE_ID",

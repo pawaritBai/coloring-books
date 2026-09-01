@@ -1,3 +1,5 @@
+import { HttpError } from "@/lib/auth/require"
+
 export function json(data: unknown, init?: ResponseInit): Response {
   return Response.json(data, init)
 }
@@ -19,6 +21,9 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn()
   } catch (err) {
+    if (err instanceof HttpError) {
+      return Response.json({ error: err.message }, { status: err.status })
+    }
     console.error("[api]", err)
     const message = err instanceof Error ? err.message : "Internal error"
     return serverError(message)

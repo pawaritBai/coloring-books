@@ -57,6 +57,15 @@ export interface CounterDoc {
   seq: number
 }
 
+export interface UserDoc {
+  _id?: ObjectId
+  email: string
+  username: string
+  passwordHash: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 export async function books(): Promise<Collection<BookDoc>> {
   return (await getDb()).collection<BookDoc>("books")
 }
@@ -69,13 +78,21 @@ export async function categories(): Promise<Collection<CategoryDoc>> {
 export async function counters(): Promise<Collection<CounterDoc>> {
   return (await getDb()).collection<CounterDoc>("counters")
 }
+export async function users(): Promise<Collection<UserDoc>> {
+  return (await getDb()).collection<UserDoc>("users")
+}
 
 const globalForIndexes = globalThis as unknown as { __indexesReady?: Promise<void> }
 
 export function ensureIndexes(): Promise<void> {
   if (!globalForIndexes.__indexesReady) {
     globalForIndexes.__indexesReady = (async () => {
-      const [b, f, c] = await Promise.all([books(), files(), categories()])
+      const [b, f, c, u] = await Promise.all([
+        books(),
+        files(),
+        categories(),
+        users(),
+      ])
       await Promise.all([
         b.createIndex({ bookId: 1 }, { unique: true }),
         b.createIndex({ categories: 1, createdAt: -1 }),
@@ -88,6 +105,8 @@ export function ensureIndexes(): Promise<void> {
         f.createIndex({ storageKey: 1 }, { unique: true }),
         f.createIndex({ "drive.fileId": 1 }, { unique: true }),
         c.createIndex({ slug: 1 }, { unique: true }),
+        u.createIndex({ email: 1 }, { unique: true }),
+        u.createIndex({ username: 1 }, { unique: true }),
       ])
     })().catch((err) => {
       // allow a retry on the next request if index creation failed

@@ -17,6 +17,12 @@ export async function insertFile(doc: FileDoc): Promise<FileDoc> {
   return { ...doc, _id: doc._id ?? res.insertedId }
 }
 
+export async function insertFiles(docs: FileDoc[]): Promise<void> {
+  if (docs.length === 0) return
+  const col = await files()
+  await col.insertMany(docs)
+}
+
 /** Delete files and return the docs that were removed (for Drive cleanup). */
 async function removeWhere(filter: Record<string, unknown>): Promise<FileDoc[]> {
   const col = await files()

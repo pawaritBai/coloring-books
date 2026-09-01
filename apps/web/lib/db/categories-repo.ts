@@ -22,36 +22,34 @@ export async function listCategories(): Promise<string[]> {
 export async function ensureCategory(name: string): Promise<string> {
   const clean = normalizeCategory(name)
   if (!clean) throw new Error("Category name is required")
-  const slug = slugify(clean)
   const col = await categories()
   const now = new Date()
   await col.updateOne(
-    { slug },
+    { slug: slugify(clean) },
     {
-      $setOnInsert: { name: clean, slug, createdAt: now },
+      $setOnInsert: { name: clean, slug: slugify(clean), createdAt: now },
       $set: { updatedAt: now },
     },
     { upsert: true },
   )
-  const doc = await col.findOne({ slug })
-  return doc?.name ?? clean
+  return clean
 }
 
 /**
- * Register every name, returning the canonical stored names, de-duplicated
+ * Register every name (in parallel), returning the names de-duplicated
  * (case-insensitive) and order-preserving.
  */
 export async function ensureCategories(names: string[]): Promise<string[]> {
-  const out: string[] = []
+  const cleaned: string[] = []
   const seen = new Set<string>()
   for (const raw of names) {
     const clean = normalizeCategory(raw)
     if (!clean) continue
-    const stored = await ensureCategory(clean)
-    const key = stored.toLowerCase()
+    const key = clean.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    out.push(stored)
+    cleaned.push(clean)
   }
-  return out
+  await Promise.all(cleaned.map((c) => ensureCategory(c)))
+  return cleaned
 }
