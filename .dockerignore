@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+**/.turbo
+.git
+.github
+.claude
+.vercel
+*.log
+# never bake secrets into the image
+.env
+.env.*
+**/credentials.json
+**/*.credentials.json
+service-account*.json
