@@ -17,7 +17,8 @@ The app is the source of truth for the structure and mirrors it into Drive folde
 
 | Library | Book view | Batch upload |
 | --- | --- | --- |
-| _add screenshot_ | _add screenshot_ | _add screenshot_ |
+| <img width="1341" height="1149" alt="Screenshot 2569-09-02 at 15 08 24" src="https://github.com/user-attachments/assets/215cfcd8-fd39-4ff6-a9f7-ddfd8123fc5c" /> | <img width="1342" height="1133" alt="Screenshot 2569-09-02 at 14 54 16" src="https://github.com/user-attachments/assets/561bf914-d3fd-4028-b5cd-205855f950ec" /> | <img width="1339" height="1148" alt="Screenshot 2569-09-02 at 15 10 22" src="https://github.com/user-attachments/assets/31634a95-faaf-4bed-be64-7b3c7fde0ce1" /> |
+
 
 ---
 
