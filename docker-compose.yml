@@ -1,0 +1,30 @@
+# Run the app + a Cloudflare tunnel so it's reachable from anywhere.
+#
+#   docker compose up -d --build
+#   docker compose logs -f tunnel      # <- the public https://xxxx.trycloudflare.com URL
+#
+# The tunnel below is a "quick tunnel": no account/domain needed, but the URL
+# changes whenever the tunnel restarts. For a stable URL, see the commented
+# `command` / `environment` (needs a domain on Cloudflare + a tunnel token).
+
+services:
+  web:
+    build: .
+    env_file:
+      - apps/web/.env.local
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - web
+    # --protocol http2: many home/mobile networks throttle long-lived UDP,
+    # which makes the default QUIC transport drop constantly. http2 is TCP.
+    command: tunnel --no-autoupdate --protocol http2 --url http://web:3000
+    # --- stable URL instead (comment out the line above) ---
+    # command: tunnel --no-autoupdate --protocol http2 run
+    # environment:
+    #   - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
